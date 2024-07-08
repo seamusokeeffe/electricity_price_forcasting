@@ -166,7 +166,7 @@ Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots
 
 <div align="center">
     <img src="images/weather_corr.png" alt="Day Ahead Prices and Weather Features Pearson Correlation Matrix" width="900"/>
-    <p><strong>Figure 8:</strong> Day Ahead Prices and Weather Features Pearson Correlation Matrix.</p>
+    <p><strong>Figure 7:</strong> Day Ahead Prices and Weather Features Pearson Correlation Matrix.</p>
 </div>
 
 <br />
@@ -177,7 +177,7 @@ Pearson Correlation Matrices for Day Ahead Prices lead 48h with Energy Features 
 
 ## Methodology
 
-**Model Selection**
+### Model Selection
 
 As previously mentioned in the literature review, deep neural networks (DNNs) are prominent for modelling short-term electricity prices. However, these methods have some drawbacks: they take a long time to fit, they are prone to overfitting, and they are often uninterpretable.
 
@@ -191,15 +191,138 @@ GBDTs (Friedman, 2001) are among the most popular machine learning algorithms fo
 
 The results of the pyGAM and LightGBM models are compared to several benchmarks: two naive forecasts, one seasonal ARIMA model, and three regularised linear models (lasso, ridge, and elastic net). The naive approaches predict the price observed in the corresponding hour 48 hours before (1) or one week before (2).
 
-**Hyperparameter Optimization**
+### Model Fitting
 
-Median absolute error was chosen to compare model performance, as this metric is less sensitive to outliers compared to mean squared error. Hyperparameter Optimisation for the benchmark models was straightforward as both ARIMA and regularised linear models have a limited set of parameters and hyperparameters respectively. Parameter choices for ARIMA were confirmed using the pmdarima.auto_arima function.
+Median absolute error was chosen to compare model performance, as this metric is less sensitive to outliers compared to mean squared error. Model performance during hyperparameter optimisation was tracked and compared using MLflow, an open-source platform for managing the machine learning lifecycle. MLflow stored experiment data, facilitating the easy comparison of different models and hyperparameter configurations.
 
-In most machine learning problems, having more training data is generally preferred, as it allows for more complicated models to be fitted without overfitting. This is not always the case in time series problems, as more recent data can be more valuable for predicting future values. With this in mind, the length of training data was treated as a parameter. Length of training data and regularisation hyperparameters for linear models were optimised by grid search.
 
-For both PyGAM and LightGBM, separate models were fit for various lengths of training data. In the case of PyGAM, insignificant features indicated by the p-values reported in the model summary were removed and regularisation penalties were optimised using grid search. In the case of LightGBM, noise parameters were added to the predictor variables and features with importances less than these values were removed. With the large number of hyperparameters to tune with LightGBM, the Bayesian optimisation package Hyperopt (Bergstra et al., 2013) was used to find optimal values.
+**ARIMA**
 
-Model performance during hyperparameter optimisation was tracked and compared using MLflow, an open-source platform for managing the machine learning lifecycle. MLflow stored experiment data, facilitating the easy comparison of different models and hyperparameter configurations.
+<br />
+
+<div align="center">
+    <img src="images\arima_adf.png" alt=" " width="600"/>
+    <p><strong>Table 3:</strong>  Augmented Dickey-Fuller Test Results for Netherlands Day Ahead Electricity Prices and First Differences.</p>
+</div>
+
+<br />
+
+<br />
+
+<div align="center">
+    <img src="images\arima_acf_pacf.png" alt=" " width="900"/>
+    <p><strong>Figure 8:</strong> Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots for the First Differences of Netherlands Day Ahead Electricity Prices.</p>
+</div>
+
+<br />
+
+Although the null hypothesis of the Augmented Dickey-Fuller test is rejected for day-ahead prices, the plot of the time series in Figure 1 does not appear fully stationary, prompting an examination of the first difference. The significant spike at lag 1 in the PACF plot (Figure 8) suggests an AR(1) component, while the spike at lag 24 indicates a seasonal AR(1) component. Similarly, the significant spike at lag 1 in the ACF plot suggests an MA(1) component, and the spike at lag 24 indicates a seasonal MA(1) component. These observations suggest that a SARIMAX(1, 1, 1)x(1, 0, 1, 24) model is appropriate.
+
+<br />
+
+<div align="center">
+    <img src="images\auto_arima.png" alt=" " width="600"/>
+    <p><strong>Figure 9:</strong> Model Fit Summary from auto_arima.</p>
+</div>
+
+<br />
+
+A model was also fitted using pmdarima.auto_arima to confirm these parameter selections, and the results are shown in Figure 9 above. Due to the time required to fit the auto_arima function, only the last 200 observations in the training set were used. The best model identified by auto_arima was SARIMAX(1, 0, 1)x(1, 0, 1, 24). Both models will be fitted and their performance compared on the validation set, and the SARIMAX(1, 2, 1)x(1, 0, 1, 24) model using 200 days produced the best fit.
+
+**Regularised Linear Models**
+
+| Model        | Alpha   | L1 Ratio | Training Days|
+| :----------- | :-----: | ---:     | ---:         |
+| Lasso        | 0.1     | -        | 100          |
+| Ridge        | 5,000   | -        | 200          |
+| Elastic Net  | 0.3     | 0.1      | 100          |
+
+<br />
+<div align="center">
+    <p><strong>Table 4:</strong>  Linear Models' Optimal Hyperparamter Settings.</p>
+</div>
+<br />
+
+<br />
+
+<div align="center">
+    <img src="images\lasso_coef.png" alt=" " width="600"/>
+    <p><strong>Figure 9:</strong> Lasso Coefficient Values.</p>
+</div>
+
+<br />
+
+<br />
+
+<div align="center">
+    <img src="images\ridge_coef.png" alt=" " width="600"/>
+    <p><strong>Figure 10:</strong> Ridge Coefficient Values.</p>
+</div>
+
+<br />
+
+<br />
+
+<div align="center">
+    <img src="images\Elastic_net_coef.png" alt=" " width="600"/>
+    <p><strong>Figure 11:</strong> Elastic Net Coefficient Values.</p>
+</div>
+
+<br />
+
+Hyperparameters for the regularised linear models (lasso, ridge, and elastic net) were selected to minimise validation MAE while avoiding overfitting, with the optimal parameters shown in Table 4 above. The fitted coefficient values for these models are displayed in Figures 9-11 above. Sparsity is introduced by the Lasso and Elastic Net models, as both have only 11 and 10 non-zero coefficients, respectively. In contrast, the Ridge model has significantly more non-zero coefficients, making it more complex than the Lasso and Elastic Net models. This complexity is also reflected in its optimal alpha value, which is several orders of magnitude greater than the optimal alpha values for the simpler Lasso and Elastic Net models.
+
+**GAM**
+
+<br />
+
+<div align="center">
+    <img src="images\gam_pd_plots.png" alt=" " width="900"/>
+    <p><strong>Figure 12:</strong> Linear GAM Partial Dependance Plots.</p>
+</div>
+
+<br />
+
+Insignificant features indicated by the p-values reported in the model summary were removed, and regularisation penalties were optimised using grid search. The contribution of each feature to the overall prediction in a GAM model can be inspected using partial dependence functions, as presented in Figure 12. Many of the relationships are intuitive, such as positive relationships with day_ahead_prices, generation_Fossil Gas, generation_Other, Forecasted Load, and generation_fossil_gas_missing_qty, and negative relationships with generation_Solar, generation_forecast, residual_load, humidity_weighted, wind_speed_weighted, and generation_fossil_hard_coal_missing_qty.
+
+The relationships of the categorical features with the target are also intuitive. The target_day_of_week plot shows that prices peak at the start of the week and are lowest on the weekend. The target_weekend plot confirms that prices are higher during the week than on the weekend. The target_hour_of_day plot shows that prices peak at approximately 7 am and 7 pm, which aligns with observations in Figures 3 and 4.
+
+However, several non-linear relationships are non-intuitive, such as those for generation_Biomass, generation_Fossil Hard coal, generation_Nuclear, generation_Waste, and generation_forecast_Wind. These may indicate that these features are not as informative.
+
+**Light GBM**
+
+| Parameter            | Value  |
+| :-----------         | :-----:|
+| Training days        | 200    |
+| colsample_bytree     | 0.677  |
+| early_stopping_round | 30     |
+| learning_rate        | 0.224  |
+| max_bin              | 30     |
+| max_depth            | 3      |
+| min_data_in_leaf     | 6      |
+| num_iterations       | 173    |
+| num_leaves           | 3      |
+| reg_alpha            | 0.328  |
+| reg_lambda           | 0.892  |
+| subsample            | 0.36   |
+
+<br />
+<div align="center">
+    <p><strong>Table 5:</strong>  Light GBM Optimal Parameter Values.</p>
+</div>
+<br />
+
+<br />
+
+<div align="center">
+    <img src="images\light_gbm_fi.png" alt=" " width="800"/>
+    <p><strong>Figure 13:</strong> Light GBM Feature Importances.</p>
+</div>
+
+<br />
+
+Noise parameters were added to the predictor variables, and features with importances less than these values were removed. Given the large number of hyperparameters to tune with LightGBM, the Bayesian optimisation package Hyperopt (Bergstra et al., 2013) was used to find optimal values, as shown in Table 5. Feature importances for the model are displayed in Figure 13.
+
 
 ## Results
 

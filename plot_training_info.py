@@ -5,6 +5,7 @@ from copy import deepcopy
 import numpy as np
 import pandas as pd
 import altair as alt
+import matplotlib.pyplot as plt
 
 class PlotLightGBMTrainingPredictions:
 
@@ -223,3 +224,20 @@ class PlotLightGBMTrainingPredictions:
         ).interactive()
 
         chart.display()
+
+def statsmodel_fit_summary(model, plot_title):
+    print("#" * 20)
+    print("#" * 20)
+    print(f"Fitting {plot_title}")
+    print("")
+    # summary of fit model
+    print(model.summary())
+    # Residual Plot
+    residuals = pd.DataFrame(model.resid)
+    fig, axs = plt.subplots(1, 2, figsize=(12, 4))
+    residuals.plot(ax=axs[0], title="Residuals vs Time")
+    residuals.plot(kind='kde', ax=axs[1], title="Residuals distibution")
+    fig.suptitle(plot_title)
+    plt.show()
+    print("#" * 20)
+    print("#" * 20)

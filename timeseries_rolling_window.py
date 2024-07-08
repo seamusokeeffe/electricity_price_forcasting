@@ -12,6 +12,8 @@ from itertools import product
 from models import Naive
 import mlflow
 import joblib
+from math import ceil
+from sklearn.feature_selection import mutual_info_regression
 
 class RollingWindowBase:
     """
@@ -45,10 +47,14 @@ class RollingWindowBase:
         self.startdate_val = startdate_val
         self.validation_days = validation_days
         self.horizon_days_val = horizon_days_val
+        self.last_horizon_days_val = horizon_days_val
+        self.enddate_val = self.startdate_val + timedelta(days=self.validation_days - 1)
         self.y_test = y_test
         self.startdate_test = startdate_test
         self.test_days = test_days
         self.horizon_days_test = horizon_days_test
+        self.last_horizon_days_test = horizon_days_test
+        self.enddate_test = self.startdate_test + timedelta(days=self.test_days - 1)
         self.gap_days = gap_days
         self.target_name = target_name
         self.covariate_names = covariate_names
@@ -226,8 +232,16 @@ class RollingWindowBase:
         """
         enddate_train = startdate_val - timedelta(days=1)
         startdate_train = enddate_train - timedelta(days=training_days-1)
-        enddate_val = startdate_val + timedelta(days=self.horizon_days_val - 1)
-        enddate_test = startdate_test + timedelta(days=self.horizon_days_test - 1)
+        enddate_val = min(startdate_val + timedelta(days=self.horizon_days_val - 1), self.enddate_val)
+
+        if enddate_val == self.enddate_val:
+            self.last_horizon_days_val = (enddate_val - startdate_val + timedelta(days=1)).days
+
+        enddate_test = min(startdate_test + timedelta(days=self.horizon_days_test - 1), self.enddate_test)
+
+        if enddate_test == self.enddate_test:
+            self.last_horizon_days_test = (enddate_test - startdate_test + timedelta(days=1)).days
+
         return {
             'startdate_train': startdate_train,
             'enddate_train': enddate_train,
@@ -255,6 +269,8 @@ class RollingWindowBase:
             'val': self._load_predictions(self.filenames['pred_val']),
             'test': self._load_predictions(self.filenames['pred_test']),
         }
+
+        # predictions['val'] = None
 
         if self.save_predictions_flag['val'] and predictions['val'] is None:
             datasets, temp_covariate_names = self.split_train_val_test_data(startdate_val, startdate_test, training_days)
@@ -386,6 +402,8 @@ class RollingWindowBase:
                         df['datetime'].dt.date <= data_dates[f'enddate_{dataset_name}'])
             datasets[f'X_{dataset_name}'] = df[_ind][covariate_names].values
             datasets[f'y_{dataset_name}'] = df[_ind][self.target_name].values
+
+        datasets['covariate_names'] = covariate_names
         return datasets
 
     def scale_data(self, datasets, numerical_inds):
@@ -452,7 +470,8 @@ class RollingWindowBase:
         datasets: A dictionary of datasets.
         covariate_names: A list of covariate names
         """
-        pass
+        model = deepcopy(self.model_info['model_instance'])
+        return model
 
     def generate_predictions(self, model, datasets, is_first_training_window):
         """
@@ -472,13 +491,13 @@ class RollingWindowBase:
         if self.model_implementation != 'statsmodels':
             model.fit(datasets['X_train'], datasets['y_train'], **self.model_info['fit_params'])
 
-            train_data = datasets['X_train'] if is_first_training_window else datasets['X_train'][-24:]
+            train_data = datasets['X_train'] if is_first_training_window else datasets['X_train'][-24 * self.horizon_days_val:]
             pred_train = self.save_predictions(model, train_data, None,self.filenames['pred_train'],
                                                self.filenames['model_cache']) if self.save_predictions_flag['train'] else np.array([])
 
-        pred_val = self.save_predictions(model, datasets['X_val'], self.horizon_days_val, self.filenames['pred_val'],
+        pred_val = self.save_predictions(model, datasets['X_val'], self.last_horizon_days_val, self.filenames['pred_val'],
                                          self.filenames['model_cache']) if self.save_predictions_flag['val'] else np.array([])
-        pred_test = self.save_predictions(model, datasets['X_test'], self.horizon_days_test, self.filenames['pred_test'],
+        pred_test = self.save_predictions(model, datasets['X_test'], self.last_horizon_days_test, self.filenames['pred_test'],
                                           self.filenames['model_cache']) if self.save_predictions_flag['test'] else np.array([])
 
         return pred_train, pred_val, pred_test
@@ -503,7 +522,8 @@ class RollingWindowBase:
                     model_cache = self.load_model_cache(model_cache_filename)
                     y_pred = model_cache['target_scaler'].inverse_transform(y_pred.reshape(-1, 1)).reshape(-1)
             elif self.model_implementation == 'statsmodels':
-                y_pred = model.forecast(horizon_days * 24).values
+                y_pred = model.forecast((self.model_info['lead_days'] + horizon_days) * 24).values
+                y_pred = y_pred[-horizon_days * 24:]
 
             print(f"Saving {predictions_filename}")
             with open(predictions_filename, 'wb') as f:
@@ -595,7 +615,7 @@ class RollingWindowBase:
         np.ndarray: The target values for the rolling training period.
         """
         train_startdate = self.startdate_val - timedelta(days=training_days)
-        train_enddate = self.startdate_val + timedelta(days=self.validation_days - 2)
+        train_enddate = self.startdate_val + timedelta(days=self.validation_days - self.horizon_days_val - 1)
         train_indices = (self.df['datetime'].dt.date >= train_startdate) & (self.df['datetime'].dt.date <= train_enddate)
         y_train = self.df.loc[train_indices, self.target_name].values
 
@@ -788,7 +808,9 @@ class RollingWindowSarimax(RollingWindowBase):
         model: The initialized sklearn model instance.
         """
         model = SARIMAX(datasets['X_train'], order=self.model_params['order'],
-                        seasonal_order=self.model_params['seasonal_order']).fit()
+                        seasonal_order=self.model_params['seasonal_order'])
+        model.initialize_approximate_diffuse()
+        model = model.fit()
         return model
 
 class RollingWindowNaive(RollingWindowBase):
@@ -827,8 +849,8 @@ class RollingWindowNaive(RollingWindowBase):
         """
         enddate_train = startdate_val - timedelta(days=1)
         startdate_train = enddate_train - timedelta(days=training_days-self.model_params['lookback_horizon_days'] - 1)
-        enddate_val = startdate_val + timedelta(days=self.horizon_days_val - 1)
-        enddate_test = startdate_test + timedelta(days=self.horizon_days_test - 1)
+        enddate_val = min(startdate_val + timedelta(days=self.horizon_days_val - 1), self.enddate_val)
+        enddate_test = min(startdate_test + timedelta(days=self.horizon_days_test - 1), self.enddate_test)
         return {
             'startdate_train': startdate_train,
             'enddate_train': enddate_train,
@@ -889,3 +911,373 @@ class RollingWindowNaive(RollingWindowBase):
         model: The initialized sklearn model instance.
         """
         return Naive(lookback_horizon_days=self.model_params['lookback_horizon_days'])
+
+class RollingWindowLinearGam(RollingWindowBase):
+    """
+    Implements rolling window training and evaluation for LinearGam models.
+
+    Inherits from RollingWindowBase to provide additional functionality specific to LinearGam models.
+    """
+    def __init__(self, df, y_val, startdate_val, validation_days, horizon_days_val, y_test, startdate_test, test_days,
+                 horizon_days_test, gap_days, target_name, covariate_names, binary_covariate_names=None,
+                 categorical_covariate_names=None, tensor_term_names=None, alpha_0=0.05):
+
+        super().__init__(df, y_val, startdate_val, validation_days, horizon_days_val, y_test, startdate_test, test_days,
+                 horizon_days_test, gap_days, target_name, covariate_names, binary_covariate_names,
+                 categorical_covariate_names)
+
+        self.tensor_term_names = tensor_term_names
+        self.alpha_0 = alpha_0
+
+    def train_and_evaluate(self, training_days, model_name, model_params):
+        """
+        Trains the model and evaluates predictions.
+
+        Parameters:
+        training_days (int): Number of days for the training period.
+        model_name (str): Name of the model configuration.
+        model_params (dict): Parameters for the model configuration.
+
+        Returns:
+        tuple: Contains predictions and evaluation results for the given model configuration.
+        """
+        self.model_name = model_name
+        self.model_params = model_params
+        self.create_model_instance(training_days)
+        predictions = self.get_predictions(training_days)
+        results = self.evaluate_predictions(training_days, predictions)
+        self.log_results(results, training_days)
+        return predictions, results
+
+    def create_model_instance(self, training_days):
+        """
+        Trains the model and evaluates predictions.
+
+        Parameters:
+        training_days (int): Number of days for the training period.
+        model_name (str): Name of the model configuration.
+        model_params (dict): Parameters for the model configuration.
+
+        Returns:
+        tuple: Contains predictions and evaluation results for the given model configuration.
+        """
+        _, covariate_names_final, tensor_terms_final, lams = self.get_optimal_gam_covariates_and_lamdas(training_days)
+        self.covariate_names = covariate_names_final
+        _, categorical_covariate_names = self.get_covariate_names(self.df)
+        numerical_names, numerical_inds = self.get_numerical_covariate_names_and_indices(covariate_names_final, categorical_covariate_names)
+        function_def, tensor_terms_final = self.create_gam_function(covariate_names_final, numerical_names,
+                                                                    tensor_terms_final)
+        self.model_info['model_instance'] = LinearGAM(function_def, lam=lams)
+
+    def get_optimal_gam_covariates_and_lamdas(self, training_days):
+        """
+        Determines the optimal covariates and lambda values for the GAM model using grid search and statistical tests.
+
+        Parameters:
+        training_days (int): Number of days for the training period.
+
+        Returns:
+        tuple: Contains the trained GAM model, final covariate names, final tensor terms, and lambda values.
+        """
+        self.filenames = self.create_file_paths(self.startdate_val, self.startdate_test, training_days)
+        datasets, covariate_names = self.split_train_val_test_data(self.startdate_val, self.startdate_test, training_days)
+        _, categorical_covariate_names = self.get_covariate_names(self.df)
+        numerical_names, numerical_inds = self.get_numerical_covariate_names_and_indices(covariate_names, categorical_covariate_names)
+        model_cache = self.load_model_cache(self.filenames['model_cache'])
+
+        if not model_cache or 'lam' not in model_cache:
+            covariate_names, covariate_indices = self._get_significant_covariate_names_and_indices(datasets, covariate_names, numerical_names)
+            datasets['X_train'] = datasets['X_train'][:, covariate_indices]
+
+            if self.model_params['use_grid_search']:
+                gam = self._perform_grid_search(datasets, covariate_names, numerical_names)
+            else:
+                gam = self._fit_gam(datasets, covariate_names, numerical_names)
+
+            model_cache = self._update_model_cache(gam, covariate_names)
+            self.save_model_cache(self.filenames['model_cache'], model_cache)
+
+        if self.model_info['print_summary']:
+            self._print_model_summary(model_cache)
+
+        return model_cache['model'], model_cache['covariate_names_final'], model_cache['tensor_terms_final'],  \
+            model_cache['lam']
+
+    def _get_significant_covariate_names_and_indices(self, datasets, covariate_names, numerical_names):
+        """
+        Identifies significant covariate names and their indices based on p-values from the GAM model.
+
+        Parameters:
+        datasets (dict): The dictionary containing training datasets.
+        covariate_names (list): List of initial covariate names.
+        numerical_names (list): List of numerical covariate names.
+
+        Returns:
+        tuple: Contains lists of significant covariate names and their corresponding indices.
+        """
+        function_def, tensor_terms = self.create_gam_function(covariate_names, numerical_names, self.tensor_term_names)
+        gam = LinearGAM(function_def).fit(datasets['X_train'], datasets['y_train'])
+        alpha = self.alpha_0 / len(covariate_names)
+
+        covariate_names += tensor_terms
+
+        significant_covariates = [(i, covariate_names[i]) for i, p in enumerate(gam.statistics_['p_values'][:-1]) if
+                                  p <= alpha]
+
+        significant_covariate_indices = [i for i, _ in significant_covariates]
+        significant_covariate_names = [name for _, name in significant_covariates]
+
+        return significant_covariate_names, significant_covariate_indices
+
+    def create_gam_function(self, covariate_names, numerical_names, tensor_term_names):
+        """
+        Creates the GAM function definition and tensor terms based on the given covariate names.
+
+        Parameters:
+        covariate_names (list): List of covariate names.
+        numerical_names (list): List of numerical covariate names.
+
+        Returns:
+        tuple: Contains the GAM function definition and final tensor terms.
+        """
+        function_def = None
+        tensor_terms_final = []
+
+        for i, cov_name in enumerate(covariate_names):
+            term = s(i) if cov_name in numerical_names else f(i)
+            function_def = term if function_def is None else function_def + term
+
+        if tensor_term_names is not None:
+            covname_to_index = {name: index for index, name in enumerate(covariate_names)}
+            for tt in tensor_term_names:
+                term_names = tt.split('*')
+                if (term_names[0] in covariate_names) and (term_names[1] in covariate_names):
+                    function_def += te(covname_to_index[term_names[0]], covname_to_index[term_names[1]])
+                    tensor_terms_final.append(tt)
+
+        return function_def, tensor_terms_final
+
+    def _perform_grid_search(self, datasets, covariate_names, numerical_names):
+        """
+        Performs grid search to find the optimal lambda values for the GAM model.
+
+        Parameters:
+        datasets (dict): The dictionary containing training datasets.
+        covariate_names (list): List of initial covariate names.
+        numerical_names (list): List of numerical covariate names.
+
+        Returns:
+        tuple: Contains the fitted GAM model and the lambda values used in the grid search.
+        """
+        function_def, tensor_term_names = self.create_gam_function(covariate_names, numerical_names, self.tensor_term_names)
+        n_lams = len(covariate_names) + (2 * len(tensor_term_names) if tensor_term_names else 0)
+        lams = self.create_gam_lamdas(n_lams)
+        gam = LinearGAM(function_def).gridsearch(datasets['X_train'], datasets['y_train'], lam=lams)
+        return gam
+
+    def create_gam_lamdas(self, n_covariates):
+        """
+        Creates lambda values for GAM model grid search.
+
+        Parameters:
+        n_covariates (int): The number of covariates.
+
+        Returns:
+        np.ndarray: A 2D array of lambda values for the grid search.
+        """
+        # Generate random points in the range [0, 1] with shape (n_parameter_trials, n_covariates)
+        random_points = np.random.rand(self.model_info['n_parameter_trials'], n_covariates)
+        # Scale and shift values using lambda_alpha and lambda_beta
+        lams = random_points * self.model_params['lamda_beta'] + self.model_params['lamda_alpha']
+        # Transform values to the range [10^lam_alpha, 10^(lam_alpha * lam_beta)]
+        lams = 10 ** lams
+        return lams
+
+    def _fit_gam(self, datasets, covariate_names, numerical_names):
+        """
+        Fits a LinearGAM model using the provided datasets and covariate information.
+
+        Parameters:
+        datasets (dict): Dictionary containing the training datasets.
+        covariate_names (list): List of covariate names.
+        numerical_names (list): List of numerical covariate names.
+
+        Returns:
+        LinearGAM: A fitted LinearGAM model.
+        """
+        function_def, _ = self.create_gam_function(covariate_names, numerical_names, self.tensor_term_names)
+        return LinearGAM(function_def).fit(datasets['X_train'], datasets['y_train'])
+
+    def _update_model_cache(self, gam, covariate_names):
+        """
+        Updates the model cache with the significant covariates, tensor terms, and their corresponding lambda values.
+
+        Parameters:
+        gam (LinearGAM): The fitted GAM model.
+        covariate_names (list): List of initial covariate names.
+        lams (list): List of lambda values used in the model.
+
+        Returns:
+        dict: Updated model cache.
+        """
+        tensor_term_names = gam.statistics_.get('tensor_term_names', [])
+        alpha = self.alpha_0 / (len(covariate_names) + len(tensor_term_names))
+        covariate_names_final = []
+        tensor_terms_final = []
+        lam_final = []
+
+        covariate_p_values = gam.statistics_['p_values'][:len(covariate_names)]
+        lams = gam.lam
+        tensor_terms_p_values = gam.statistics_['p_values'][len(covariate_names):-1]
+
+        # Filter significant covariates
+        for i, p in enumerate(covariate_p_values):
+            if p <= alpha:
+                covariate_names_final.append(covariate_names[i])
+                lam_final.append(lams[i])
+
+        # Filter significant tensor terms
+        for i, p in enumerate(tensor_terms_p_values):
+            if p <= alpha:
+                temp_ttn = tensor_term_names[i].split('*')
+                if temp_ttn[0] in covariate_names_final and temp_ttn[1] in covariate_names_final:
+                    tensor_terms_final.append(tensor_term_names[i])
+                    lam_final.append(lams[len(covariate_names) + i])
+
+        model_cache = {
+            'covariate_names': covariate_names,
+            'covariate_names_final': covariate_names_final,
+            'tensor_terms': tensor_term_names,
+            'tensor_terms_final': tensor_terms_final,
+            'lam': lam_final,
+            'p_values': gam.statistics_['p_values'],
+            'model': gam
+        }
+
+        return model_cache
+
+    def _print_model_summary(self, model_cache):
+        """
+        Prints the model fit summary.
+
+        Parameters:
+        model_cache (dict): Model cache.
+        """
+        model_cache['model'].summary()
+        for i, cov_name in enumerate(model_cache['covariate_names_final'] + model_cache['tensor_terms_final']):
+            print(f"{i} {cov_name}")
+
+    def get_interaction_terms(self, df_X, df_y, covariate_names, categorical_covariate_names):
+        """
+        Identifies significant interaction terms between covariates based on mutual information.
+
+        Parameters:
+        df_X (pd.DataFrame): The dataframe containing the input features.
+        df_y (pd.Series): The target variable.
+        covariate_names (list): List of covariate names.
+
+        Returns:
+        pd.DataFrame: A dataframe containing the significant interaction terms and their mutual information scores.
+        """
+
+        covariate_names = [c for c in covariate_names if c not in categorical_covariate_names]
+
+        n_covariate_names = len(covariate_names)
+        tensor_terms_data = []
+        tensor_terms_names = []
+
+        # Generate interaction terms
+        for i in range(n_covariate_names - 1):
+            for j in range(i + 1, n_covariate_names):
+                interaction_term_name = f"{covariate_names[i]}*{covariate_names[j]}"
+                tensor_terms_names.append(interaction_term_name)
+                tensor_terms_data.append(df_X[covariate_names[i]] * df_X[covariate_names[j]])
+
+        df_tensor_terms = pd.concat(tensor_terms_data, axis=1)
+        df_tensor_terms.columns = tensor_terms_names
+        df_X = pd.concat([df_X, df_tensor_terms], axis=1)
+
+        # determine the mutual information
+        mutual_info = mutual_info_regression(df_X, df_y)
+        mutual_info_series = pd.Series(mutual_info, index=df_X.columns)
+
+        # Determine the interaction terms to keep
+        interaction_2_keep = [
+            (interaction, mutual_info_series[interaction])
+            for interaction in set(mutual_info_series.index) - set(covariate_names)
+            if mutual_info_series[interaction] > mutual_info_series[interaction.split('*')[0]]
+            and mutual_info_series[interaction] > mutual_info_series[interaction.split('*')[1]]
+        ]
+
+        df_out = pd.DataFrame([term[1] for term in interaction_2_keep], columns=['Mutual Info.'], index=[term[0] for term in interaction_2_keep])
+        df_out.index.name = 'interaction_name'
+        df_out.sort_values('Mutual Info.', ascending=False, inplace=True)
+
+        return df_out
+
+    def plot_partial_dependence(self, model_name, startdate_val, startdate_test, training_days, figsize=(20, 100)):
+        """
+        Plots partial dependence plots for the specified model and covariates.
+
+        Parameters:
+        model_name (str): Name of the model configuration.
+        test_startdate (datetime.date): The start date for the test period.
+        n_train_day (int): Number of days for the training period.
+        figsize (tuple): Figure size for the plot.
+        """
+        self.model_name = model_name
+        filenames = self.create_file_paths(startdate_val, startdate_test, training_days)
+        model_cache = self.load_model_cache(filenames['model_cache'])
+
+        n_covariates = len(model_cache['covariate_names_final'])
+        ind_covariate_names = [
+            i for i, name in enumerate(model_cache['covariate_names'])
+            if name in model_cache['covariate_names_final']
+        ]
+
+        # Plot Partial Dependence plots
+        fig, axs = plt.subplots(ceil(n_covariates / 3), 3, figsize=figsize)
+
+        for i, (cov_ind, cov_name) in enumerate(zip(ind_covariate_names, model_cache['covariate_names_final'])):
+            XX = model_cache['model'].generate_X_grid(term=cov_ind)
+            pdp, conf_int = model_cache['model'].partial_dependence(term=cov_ind, X=XX, width=.95)
+            row, col = divmod(i, 3)
+            axs[row, col].plot(XX[:, cov_ind], pdp)
+            axs[row, col].plot(XX[:, cov_ind], conf_int, c='r', ls='--')
+            axs[row, col].set_title(cov_name, fontsize=14)
+
+        plt.tight_layout()
+        fig.suptitle('Linear Gam Partial Dependance Plots', fontsize=24)
+        fig.subplots_adjust(top=0.95)
+        plt.show()
+
+    def plot_partial_dependence_tensor(self, model_name, test_startdate, n_train_day, figsize=(20, 30)):
+        """
+        Plots partial dependence plots for tensor terms in the specified model.
+
+        Parameters:
+        model_name (str): Name of the model configuration.
+        test_startdate (datetime.date): The start date for the test period.
+        n_train_day (int): Number of days for the training period.
+        figsize (tuple): Figure size for the plot.
+        """
+        filenames = self.create_file_paths(model_name, test_startdate, n_train_day)
+        model_cache = self.load_model_cache(filenames['model_cache'])
+
+        covariate_names = model_cache['covariate_names'] + model_cache['tensor_terms']
+        n_tensor_terms = len(model_cache['tensor_terms_final'])
+        ind_tensor_terms = [i for i, name in enumerate(covariate_names) if name in model_cache['tensor_terms_final']]
+
+        # Plot Partial Dependence plots
+        fig = plt.figure(figsize=figsize)
+
+        for i, (tensor_ind, tensor_name) in enumerate(zip(ind_tensor_terms, model_cache['tensor_terms_final'])):
+            ax = fig.add_subplot(ceil(n_tensor_terms / 2), 2, i + 1, projection='3d')
+            XX = model_cache['model'].generate_X_grid(term=tensor_ind, meshgrid=True)
+            Z = model_cache['model'].partial_dependence(term=tensor_ind, X=XX, meshgrid=True)
+
+            ax.plot_surface(XX[0], XX[1], Z, cmap='viridis')
+            ax.set_title(tensor_name)
+
+        plt.tight_layout()
+        plt.show()
