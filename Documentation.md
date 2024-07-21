@@ -104,7 +104,7 @@ Weather data was obtained for seven Dutch cities: Almer, Amsterdam, Eindhoven, G
 Common processing steps in forecasting financial prices, such as converting raw prices into returns and applying a log-transformation, were not used here due to the potential for zero and negative electricity prices. Although the Box-Cox transformation can handle negative values, it was not investigated in this study but could be a point for future work.
 
 **Feature Engineering**\
-Additional features were generated to better describe the target variable. Both the literature and figures 2 and 3 demonstrate hour-of-day and day-of-week seasonality, so these variables were included. Lagged features were also added to give the model more context. Optimal lags were selected by calculating the mutual information between lagged variables and the target variable, generally finding that variables lagged by one week added the most information. To provide information about the relative degree of the current time residual load compared to the residual load of the past hours, a relative load indicator (RLI) was calculated for lags of 24, 48, and 168 hours (Keles, Scelle, Paraschiv, Fichtner, 2016).
+Additional features were generated to better describe the target variable. Both the literature and figures 3 and 4 demonstrate day-of-week and hour-of-day seasonality, so these variables were included. Lagged features were also added to give the model more context. Optimal lags were selected by calculating the mutual information between lagged variables and the target variable, generally finding that variables lagged by one week added the most information. To provide information about the relative degree of the current time residual load compared to the residual load of the past hours, a relative load indicator (RLI) was calculated for lags of 24, 48, and 168 hours (Keles, Scelle, Paraschiv, Fichtner, 2016).
 
 <div align="center">
     <img src="images\day_ahead_electricity_prices_by_year_and_month_nl.png" alt=" " width="1000"/>
@@ -121,7 +121,7 @@ Additional features were generated to better describe the target variable. Both 
     <p><strong>Figure 4:</strong> Netherlands Day Ahead Electricity Prices by Year and Hour of Day.</p>
 </div>
 
-**Dummy Variables for Holidays**\
+**Dummy Variables for Holidays**
 
 Dummy variables for Dutch public holidays were explored. To confirm significant differences in energy prices on holidays versus non-holidays, an A/B test was performed. The variance in electricity prices was very high from 2020-2024, which could actually be the cause for significant differences, not the holiday which is the effect being measured. To confirm that the significant differences were indeed due to the effect of the holiday, a second analysis was performed using data from 2016-2019. This secondary analysis confirmed the initial results. Consequently, dummy variables were included for all holidays except Koningsdag and Bevrijdingsdag, the latter being a public holiday only once every five years.
 
@@ -132,7 +132,7 @@ Dummy variables for Dutch public holidays were explored. To confirm significant 
 
 <div align="center">
     <img src="images\2016_2019_holiday_ab_test_nl.png" alt=" " width="900"/>
-    <p><strong>Table 2:</strong> Netherlands Holiday A/B Test Prices 2020 - 2024.</p>
+    <p><strong>Table 2:</strong> Netherlands Holiday A/B Test Prices 2016 - 2019.</p>
 </div>
 
 **Data Splitting**\
@@ -155,7 +155,7 @@ To test whether the time series are stationary, an augmented Dickey-Fuller test 
 
 <br />
 
-Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots of the electricity prices are shown in Figure 5. The PACF plot indicates that lags in multiples of 24 are significant, demonstrating hour-of-day seasonality. This suggests that lagged price features are likely to be informative.
+Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots of the electricity prices are shown in figure 5. The PACF plot indicates that lags in multiples of 24 are significant, demonstrating hour-of-day seasonality. This suggests that lagged price features are likely to be informative.
 
 <br />
 
@@ -173,7 +173,7 @@ Autocorrelation Function (ACF) and Partial Autocorrelation Function (PACF) plots
 
 Day-ahead prices are released for the next day at 12:00 UTC. To have one full day of prices before the actual values are released, prices need to be forecasted 48 hours in advance. This is reflected in the data by generating a new leading variable `day_ahead_prices_lead_48`.
 
-Pearson Correlation Matrices for Day Ahead Prices lead 48h with Energy Features and Weather Features are shown in Figures 6 and 7, respectively. Features with the highest absolute correlation include `generation_Fossil Hard coal` (0.42), `clouds_all_amsterdam` (-0.27), `wind_speed_weighted` (0.25), and `imports` (0.23).
+Pearson Correlation Matrices for Day Ahead Prices lead 48h with Energy Features and Weather Features are shown in figures 6 and 7, respectively. Features with the highest absolute correlation include `generation_Fossil Hard coal` (0.42), `clouds_all_amsterdam` (-0.27), `wind_speed_weighted` (0.25), and `imports` (0.23).
 
 ## Methodology
 
@@ -189,7 +189,7 @@ GAM (Hastie and Tibshirani, 1986) is an additive modelling technique where the i
 
 GBDTs (Friedman, 2001) are among the most popular machine learning algorithms for tabular data. Several effective implementations exist, such as XGBoost and pGBRT, but their efficiency and scalability are unsatisfactory when the feature dimension is high and data size is large. LightGBM was developed to address these issues, with its creators reporting that LightGBM speeds up the training process of conventional GBDT by over 20 times while achieving almost the same accuracy (Shi et al. 2024).
 
-The results of the pyGAM and LightGBM models are compared to several benchmarks: two naive forecasts, one seasonal ARIMA model, and three regularised linear models (lasso, ridge, and elastic net). The naive approaches predict the price observed in the corresponding hour 48 hours before (1) or one week before (2).
+The results of the GAM and LightGBM models are compared to several benchmarks: two naive forecasts, one seasonal ARIMA model, and three regularised linear models (lasso, ridge, and elastic net). The naive approaches predict the price observed in the corresponding hour 48 hours before (1) or one week before (2).
 
 ### Model Fitting
 
@@ -216,7 +216,7 @@ Median absolute error was chosen to compare model performance, as this metric is
 
 <br />
 
-Although the null hypothesis of the Augmented Dickey-Fuller test is rejected for day-ahead prices, the plot of the time series in Figure 1 does not appear fully stationary, prompting an examination of the first difference. The significant spike at lag 1 in the PACF plot (Figure 8) suggests an AR(1) component, while the spike at lag 24 indicates a seasonal AR(1) component. Similarly, the significant spike at lag 1 in the ACF plot suggests an MA(1) component, and the spike at lag 24 indicates a seasonal MA(1) component. These observations suggest that a SARIMAX(1, 1, 1)x(1, 0, 1, 24) model is appropriate.
+Although the null hypothesis of the Augmented Dickey-Fuller test is rejected for day-ahead prices, the plot of the time series in figure 1 does not appear fully stationary, prompting an examination of the first difference. The significant spike at lag 1 in the PACF plot (figure 8) suggests an AR(1) component, while the spike at lag 24 indicates a seasonal AR(1) component. Similarly, the significant spike at lag 1 in the ACF plot suggests an MA(1) component, and the spike at lag 24 indicates a seasonal MA(1) component. These observations suggest that a SARIMAX(1, 1, 1)x(1, 0, 1, 24) model is appropriate.
 
 <br />
 
@@ -227,18 +227,13 @@ Although the null hypothesis of the Augmented Dickey-Fuller test is rejected for
 
 <br />
 
-A model was also fitted using pmdarima.auto_arima to confirm these parameter selections, and the results are shown in Figure 9 above. Due to the time required to fit the auto_arima function, only the last 200 observations in the training set were used. The best model identified by auto_arima was SARIMAX(1, 0, 1)x(1, 0, 1, 24). Both models will be fitted and their performance compared on the validation set, and the SARIMAX(1, 2, 1)x(1, 0, 1, 24) model using 200 days produced the best fit.
+A model was also fitted using pmdarima.auto_arima to confirm these parameter selections, and the results are shown in figure 9 above. Due to the time required to fit the auto_arima function, only the last 200 observations in the training set were used. The best model identified by auto_arima was SARIMAX(1, 0, 1)x(1, 0, 1, 24). Both models will be fitted and their performance compared on the validation set, and the SARIMAX(1, 2, 1)x(1, 0, 1, 24) model using 200 days produced the best fit.
 
 **Regularised Linear Models**
 
-| Model        | Alpha   | L1 Ratio | Training Days|
-| :----------- | :-----: | ---:     | ---:         |
-| Lasso        | 0.1     | -        | 100          |
-| Ridge        | 5,000   | -        | 200          |
-| Elastic Net  | 0.3     | 0.1      | 100          |
-
 <br />
 <div align="center">
+    <img src="images\linear_params.png" alt=" " width="400"/>
     <p><strong>Table 4:</strong>  Linear Models' Optimal Hyperparamter Settings.</p>
 </div>
 <br />
@@ -247,7 +242,7 @@ A model was also fitted using pmdarima.auto_arima to confirm these parameter sel
 
 <div align="center">
     <img src="images\lasso_coef.png" alt=" " width="600"/>
-    <p><strong>Figure 9:</strong> Lasso Coefficient Values.</p>
+    <p><strong>Figure 10:</strong> Lasso Coefficient Values.</p>
 </div>
 
 <br />
@@ -256,7 +251,7 @@ A model was also fitted using pmdarima.auto_arima to confirm these parameter sel
 
 <div align="center">
     <img src="images\ridge_coef.png" alt=" " width="600"/>
-    <p><strong>Figure 10:</strong> Ridge Coefficient Values.</p>
+    <p><strong>Figure 11:</strong> Ridge Coefficient Values.</p>
 </div>
 
 <br />
@@ -265,12 +260,12 @@ A model was also fitted using pmdarima.auto_arima to confirm these parameter sel
 
 <div align="center">
     <img src="images\Elastic_net_coef.png" alt=" " width="600"/>
-    <p><strong>Figure 11:</strong> Elastic Net Coefficient Values.</p>
+    <p><strong>Figure 12:</strong> Elastic Net Coefficient Values.</p>
 </div>
 
 <br />
 
-Hyperparameters for the regularised linear models (lasso, ridge, and elastic net) were selected to minimise validation MAE while avoiding overfitting, with the optimal parameters shown in Table 4 above. The fitted coefficient values for these models are displayed in Figures 9-11 above. Sparsity is introduced by the Lasso and Elastic Net models, as both have only 11 and 10 non-zero coefficients, respectively. In contrast, the Ridge model has significantly more non-zero coefficients, making it more complex than the Lasso and Elastic Net models. This complexity is also reflected in its optimal alpha value, which is several orders of magnitude greater than the optimal alpha values for the simpler Lasso and Elastic Net models.
+Hyperparameters for the regularised linear models (lasso, ridge, and elastic net) were selected to minimise validation MAE while avoiding overfitting, with the optimal parameters shown in table 4 above. The fitted coefficient values for these models are displayed in figures 10-12 above. Sparsity is introduced by the Lasso and Elastic Net models, as both have only 11 and 10 non-zero coefficients, respectively. In contrast, the Ridge model has significantly more non-zero coefficients, making it more complex than the Lasso and Elastic Net models. This complexity is also reflected in its optimal alpha value, which is several orders of magnitude greater than the optimal alpha values for the simpler Lasso and Elastic Net models.
 
 **GAM**
 
@@ -278,36 +273,22 @@ Hyperparameters for the regularised linear models (lasso, ridge, and elastic net
 
 <div align="center">
     <img src="images\gam_pd_plots.png" alt=" " width="900"/>
-    <p><strong>Figure 12:</strong> Linear GAM Partial Dependance Plots.</p>
+    <p><strong>Figure 13:</strong> Linear GAM Partial Dependance Plots.</p>
 </div>
 
 <br />
 
-Insignificant features indicated by the p-values reported in the model summary were removed, and regularisation penalties were optimised using grid search. The contribution of each feature to the overall prediction in a GAM model can be inspected using partial dependence functions, as presented in Figure 12. Many of the relationships are intuitive, such as positive relationships with day_ahead_prices, generation_Fossil Gas, generation_Other, Forecasted Load, and generation_fossil_gas_missing_qty, and negative relationships with generation_Solar, generation_forecast, residual_load, humidity_weighted, wind_speed_weighted, and generation_fossil_hard_coal_missing_qty.
+Insignificant features indicated by the p-values reported in the model summary were removed, and regularisation penalties were optimised using grid search. The contribution of each feature to the overall prediction in a GAM model can be inspected using partial dependence functions, as presented in figure 13. Many of the relationships are intuitive, such as positive relationships with day_ahead_prices, generation_Fossil Gas, generation_Other, Forecasted Load, and generation_fossil_gas_missing_qty, and negative relationships with generation_Solar, generation_forecast, residual_load, humidity_weighted, wind_speed_weighted, and generation_fossil_hard_coal_missing_qty.
 
-The relationships of the categorical features with the target are also intuitive. The target_day_of_week plot shows that prices peak at the start of the week and are lowest on the weekend. The target_weekend plot confirms that prices are higher during the week than on the weekend. The target_hour_of_day plot shows that prices peak at approximately 7 am and 7 pm, which aligns with observations in Figures 3 and 4.
+The relationships of the categorical features with the target are also intuitive. The target_day_of_week plot shows that prices peak at the start of the week and are lowest on the weekend. The target_weekend plot confirms that prices are higher during the week than on the weekend. The target_hour_of_day plot shows that prices peak at approximately 7 am and 7 pm, which aligns with observations in figures 3 and 4.
 
 However, several non-linear relationships are non-intuitive, such as those for generation_Biomass, generation_Fossil Hard coal, generation_Nuclear, generation_Waste, and generation_forecast_Wind. These may indicate that these features are not as informative.
 
 **Light GBM**
 
-| Parameter            | Value  |
-| :-----------         | :-----:|
-| Training days        | 200    |
-| colsample_bytree     | 0.677  |
-| early_stopping_round | 30     |
-| learning_rate        | 0.224  |
-| max_bin              | 30     |
-| max_depth            | 3      |
-| min_data_in_leaf     | 6      |
-| num_iterations       | 173    |
-| num_leaves           | 3      |
-| reg_alpha            | 0.328  |
-| reg_lambda           | 0.892  |
-| subsample            | 0.36   |
-
 <br />
 <div align="center">
+    <img src="images\lgbm_params.png" alt=" " width="250"/>
     <p><strong>Table 5:</strong>  Light GBM Optimal Parameter Values.</p>
 </div>
 <br />
@@ -316,27 +297,47 @@ However, several non-linear relationships are non-intuitive, such as those for g
 
 <div align="center">
     <img src="images\light_gbm_fi.png" alt=" " width="800"/>
-    <p><strong>Figure 13:</strong> Light GBM Feature Importances.</p>
+    <p><strong>Figure 14:</strong> Light GBM Feature Importances.</p>
 </div>
 
 <br />
 
-Noise parameters were added to the predictor variables, and features with importances less than these values were removed. Given the large number of hyperparameters to tune with LightGBM, the Bayesian optimisation package Hyperopt (Bergstra et al., 2013) was used to find optimal values, as shown in Table 5. Feature importances for the model are displayed in Figure 13.
+Noise parameters were added to the predictor variables, and features with importances less than these values were removed. Given the large number of hyperparameters to tune with LightGBM, the Bayesian optimisation package Hyperopt (Bergstra et al., 2013) was used to find optimal values, as shown in table 5. Feature importances for the model are displayed in figure 14.
 
-<iframe src="predictions\validation_predictions.html" width="1000" height="600"></iframe>
+<br />
+
+<div align="center">
+    <img src="images\cumulative_val_error.png" alt=" " width="1000"/>
+    <p><strong>Figure 15:</strong> Cumulative Absolute Validation Error.</p>
+</div>
+
+<br />
 
 ## Results
 
 <div align="center">
     <img src="images/results.png" alt="Performance Comparison between Fitted Models" width="600"/>
-    <p><strong>Figure 9:</strong> Performance Comparison between Fitted Models.</p>
+    <p><strong>Table 6:</strong> Performance Comparison between Fitted Models.</p>
 </div>
 
-The results of the pyGAM and LightGBM models are compared to several benchmarks: two naive forecasts, one seasonal ARIMA model, and three regularised linear models (lasso, ridge, and elastic net). The naive approaches predict the price observed in the corresponding hour 48 hours before (naive_minus_2_days) or one week before (naive_minus_7_days).
+<br />
+
+<div align="center">
+    <img src="images\cumulative_val_error.png" alt=" " width="1000"/>
+    <p><strong>Figure 16:</strong> Cumulative Absolute Test Error.</p>
+</div>
+
+<br />
+
+The results of the GAM and LightGBM models are compared to several benchmarks: two naive forecasts, one seasonal ARIMA model, and three regularised linear models (lasso, ridge, and elastic net). The naive approaches predict the price observed in the corresponding hour 48 hours before (naive_minus_2_days) or one week before (naive_minus_7_days).
 
 The naive models were able to describe a considerable amount of variation in the training and validation data, with the naive_minus_2_days and naive_minus_7_days models producing \( R^2 \) values of 0.62 and 0.57, respectively. This indicates strong seasonality in the data during this period. However, the seasonal feature of the data is weaker in the test data, as the \( R^2 \) values considerably worsened to -0.11 and 0.05 for the naive_minus_2_days and naive_minus_7_days models, respectively. The test MAE values for these models are lower compared to the validation MAE values, with test MAE of 29.73 and 27.94 vs. validation MAE of 60.47 and 68.53 for naive_minus_2_days and naive_minus_7_days, respectively. This suggests that day-ahead prices were more volatile during the validation period compared to the test period.
 
-The linear models improved on the naive models, with Lasso producing the lowest test MAE of 22.91 and \( R^2 \) of 0.41. It is notable that the \( R^2 \) value for the Lasso model significantly decreased between the validation and test sets, from 0.69 to 0.41. While the lower training MAE compared to the validation MAE for Lasso suggests potential overfitting, this likely reflects a difference in price volatility between the periods, as also observed for the naive models. Despite the worsening MAE between the training and validation sets, the consistent \( R^2 \) values suggest the model did not overfit. This, along with observations from the naive results, indicates that prices during the testing period were less predictable than during the validation period.
+The Seasonal ARIMA model outperformed the naive models on the validation data, with a validation MAE of 58.19 and an \( R^2 \) of 0.68. However, its test performance was worse than the naive models, with a test MAE of 30.43 and \( R^2 \) of 0.0. Like the naive models, Seasonal ARIMA considers the seasonality of electricity prices, but its test performance is significantly worse than its validation performance. The poor performance of Seasonal ARIMA on the test data suggests that incorporating informative exogenous variables related to energy prices may be necessary to surpass the naive benchmarks.
+
+The linear models improved on the naive models, with Ridge producing the lowest test MAE of 22.91 and \( R^2 \) of 0.41. It is notable that the \( R^2 \) value for the Ridge model significantly decreased between the validation and test sets, from 0.69 to 0.41. While the lower training MAE compared to the validation MAE for Ridge suggests potential overfitting, this likely reflects a difference in price volatility between the periods, as also observed for the naive models. Despite the worsening MAE between the training and validation sets, the consistent \( R^2 \) values suggest the model did not overfit. This, along with observations from the naive results, indicates that prices during the testing period were less predictable than during the validation period.
+
+The GAM model also improved on the naive models, but only slightly, with a test MAE of 27.86 and an  \( R^2 \) of 0.13. This is surprising, as GAM typically performs better than linear models by capturing more complex relationships between covariates and the target variable. On the validation data, the GAM model achieved a MAE of 58.14 and an  \( R^2 \) of 0.72, which is similar to the Linear model’s validation performance. However, large smoothing parameter values were required to avoid overfitting, which resulted in less flexible and smoother learned relationships. These relationships, visualised in figure 13, suggest that the large smoothing parameters forced the model to approximate linear relationships. Significant features identified by the GAM model include `day_ahead_prices`, `generation_solar`, `wind_speed_weighted`, `generation_forecast`, and `generation_Other`. The limited flexibility imposed by the smoothing parameters likely explains why the GAM model performed similarly to the linear models on the validation data.
 
 LightGBM produced the best test results among all models examined. However, the test performance was muted compared to its validation performance. LightGBM's validation MAE of 41.36 was a 27% improvement over the next best linear model (57.09 for ridge), while its test MAE of 21.47 was only a 6% improvement over the next best linear model (22.91 for lasso). Similarly, LightGBM's validation \( R^2 \) of 0.83 was significantly higher than the next best linear model (0.72 for ridge), whereas its test \( R^2 \) of 0.44 was only marginally higher than the next best linear model (0.41 for lasso).
 
@@ -353,6 +354,13 @@ Given the prototype nature of the project, a sophisticated method for data stora
 Both the frontend and backend were containerised using Docker to ensure consistency and ease of deployment. The prototype application was deployed to [DigitalOcean](https://www.digitalocean.com/), a cloud platform that offers scalable and reliable infrastructure.
 
 While user authentication and security were not a primary focus for this prototype, the core functionality of the forecasting model and user interface was successfully demonstrated. The system was designed to highlight the practical application of day-ahead energy price forecasting, showcasing both the technical and user interaction aspects of the project.
+
+A demonstration of the dashboard application is shown in figure 17 below.
+
+<div align="center">
+    <img src="images/demo.gif" alt=" " width="800"/>
+    <p><strong>Figure 17:</strong> Demonstration of the Application's User Experience.</p>
+</div>
 
 ## Conclusion
 
@@ -405,6 +413,3 @@ Shi Y, Ke G, Soukhavong D, Lamb J, Meng Q, Finley T, Wang T, Chen W, Ma W, Ye Q,
 Smal, T. and Wieprow, J., 2023. Energy security in the context of global energy crisis: economic and financial conditions. Energies, 16(4), p.1605.
 
 Tertre, M.G., Martinez, I. and Rábago, M.R., 2023. Reasons behind the 2022 energy price increases and prospects for next year.
-
-
-<iframe src="images/validation_predictions.html" width="1000" height="600"></iframe>
