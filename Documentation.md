@@ -323,6 +323,7 @@ However, several non-linear relationships are non-intuitive, such as those for g
 
 Noise parameters were added to the predictor variables, and features with importances less than these values were removed. Given the large number of hyperparameters to tune with LightGBM, the Bayesian optimisation package Hyperopt (Bergstra et al., 2013) was used to find optimal values, as shown in Table 5. Feature importances for the model are displayed in Figure 13.
 
+<iframe src="predictions\validation_predictions.html" width="1000" height="600"></iframe>
 
 ## Results
 
@@ -341,7 +342,7 @@ LightGBM produced the best test results among all models examined. However, the 
 
 These results highlight the challenges of modelling day-ahead electricity prices, particularly the differences in predictability between validation and test periods. The strong seasonality and volatility in the data impact model performance, with LightGBM showing the best overall results but still facing limitations in generalising to unseen data. Future work could explore more sophisticated techniques for handling seasonality and volatility to further improve predictive accuracy.
 
-## System Design 
+## System Design
 
 The goal of this project was to develop a model that generates precise day-ahead energy price forecasts and to serve these forecasts to users through a user-friendly dashboard application. To achieve this, the project was divided into two main components: the frontend and the backend.
 
@@ -405,3 +406,5 @@ Smal, T. and Wieprow, J., 2023. Energy security in the context of global energy 
 
 Tertre, M.G., Martinez, I. and Rábago, M.R., 2023. Reasons behind the 2022 energy price increases and prospects for next year.
 
+
+<iframe src="images/validation_predictions.html" width="1000" height="600"></iframe>

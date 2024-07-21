@@ -4,7 +4,7 @@ from fastapi import FastAPI, Response
 from pydantic import BaseModel
 
 # Load the Predictions and ground truth
-filename_pred = "predictions_test_ridge_alpha_1075.0_train_974d_2023-05-23_2024-03-23.csv"
+filename_pred = "predictions_test.csv"
 df = pd.read_csv(filename_pred)
 df["datetime"] = pd.to_datetime(df["datetime"])
 
