@@ -50,4 +50,4 @@ The developed model successfully generated precise day-ahead electricity price f
 
 ### Further Reading
 
-For more detailed information, please refer to the full documentation and references used in this project, available in the repository.
+For more detailed information, please refer to the full documentation and references used in this project, available [here](https://github.com/seamusokeeffe/electricity_price_forcasting/blob/master/Documentation.md).
