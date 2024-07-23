@@ -259,7 +259,7 @@ A model was also fitted using pmdarima.auto_arima to confirm these parameter sel
 <br />
 
 <div align="center">
-    <img src="images\Elastic_net_coef.png" alt=" " width="600"/>
+    <img src="images\elastic_net_coef.png" alt=" " width="600"/>
     <p><strong>Figure 12:</strong> Elastic Net Coefficient Values.</p>
 </div>
 
@@ -358,76 +358,57 @@ While user authentication and security were not a primary focus for this prototy
 A demonstration of the dashboard application is shown in figure 17 below.
 
 <div align="center">
-    <img src="images/demo.gif" alt=" " width="800"/>
+    <img src="images/demo.gif" alt=" " width="600"/>
     <p><strong>Figure 17:</strong> Demonstration of the Application's User Experience.</p>
 </div>
 
-## Improvement in Energy Cost Estimation
-
-By utilising the advanced model to predict day-ahead energy prices, households can significantly improve the accuracy of their energy cost estimates compared to using a naive prediction method (price lagged by 7 days). This improvement translates into tangible benefits for budgeting and financial planning.
-
-The average household electricity consumption data was obtained from the "SmartMeter Energy Consumption Data in London Household" dataset, available [here](https://data.london.gov.uk/dataset/smartmeter-energy-use-data-in-london-households). The dataset was used to calculate the average electricity consumption per household by month, day, and hour. The energy costs were calculated by multiplying the average household electricity consumption by the corresponding prices (ground truth, naive predictions, and model predictions) for the testing period of 308 days. The absolute error between the ground truth costs and the costs calculated using the naive and model predictions was computed.
-
-* Ground truth cost: €472.00 (€559.35 annualised)
-* Naive Cost Absolute Error: €157.49
-* Model Cost Absolute Error: €120.12
-* Improvement in Prediction Accuracy: (€157.49 - €120.12) / €157.49 = 23.72%
-
-By using the model, the absolute error in cost estimation is reduced by €37.37 (€157.49 - €120.12), or €44.29 annualised. The annual improvement of €44.29 represents approximately 7.91% of the actual annual energy cost (€44.29 / €559.35).
-
-Households can benefit from more accurate energy cost estimations, leading to better budgeting and potentially significant annual savings. The advanced model reduces prediction errors by 23.72%, translating into an estimated annual savings of €44.29 per household. This improvement accounts for 7.91% of the actual annual energy cost, allowing households to manage their energy expenses more effectively and reduce financial strain. This demonstrates the practical value of the model in helping households optimise their energy usage and budget more effectively.
-
 ## Conclusion
 
-The aim of this project was to develop a model that generates precise day-ahead energy price forecasts to help households optimise their energy usage. As a case study, forecasts were generated for electricity prices in the Netherlands. Data was retrieved from the ENTSO-E transparency platform and extensively cleaned and preprocessed. Feature engineering, motivated by energy price forecasting literature, was performed to enhance model accuracy.
+The aim of this project was to develop a model that generates precise day-ahead energy price forecasts to enable households to optimise their energy usage. As a case study to demonstrate the model's accuracy, forecasts were generated for day-ahead electricity prices in the Netherlands. Data was retrieved from the ENTSO-E transparency platform and extensively cleaned and preprocessed for modelling. Feature engineering was performed, motivated by the energy price forecasting literature, and a LightGBM model was developed that produced better predictive performance compared to benchmarks found in the literature. These forecasts were visualised in a user-friendly dashboard application, which was deployed using Docker and hosted on DigitalOcean.
 
-A LightGBM model was developed, which demonstrated better predictive performance compared to benchmarks found in the literature. These forecasts were visualised in a user-friendly dashboard application, deployed using Docker and hosted on DigitalOcean. The practical value of the model was demonstrated by accurately predicting household electricity costs, leading to better budgeting and potentially significant annual savings. The model reduces prediction errors by 23.72%, translating into an estimated annual saving of €44.29 per household. This improvement accounts for 7.91% of the actual annual energy cost, enabling households to manage their energy expenses more effectively and reduce financial strain.
-
-Future work could focus on incorporating additional covariates such as fuel prices, especially natural gas, which were identified as valuable for modelling electricity prices but were not included due to data availability constraints. Additionally, the results highlight the challenges posed by temporal variability in seasonality and volatility. Future research could explore more sophisticated techniques for handling these factors to further improve predictive accuracy.
+Future work could focus on incorporating additional covariates such as fuel prices, especially natural gas, which were identified as valuable for modelling electricity prices but were not included due to data availability constraints. Additionally, the results highlight the challenges posed by temporal variability in seasonality and volatility when modelling day-ahead electricity prices. Future research could explore more sophisticated techniques for handling these factors to further improve predictive accuracy.
 
 ## References
 
-Alvarez, C.F. and Molnar, G., 2021. What is behind soaring energy prices and what happens next?
+Alvarez, C.F. and Molnar, G., 2021. What is behind soaring energy prices and what happens next?.
 
-Basanisi, L., 2020. Energy consumption of the Netherlands. Available at: <https://www.kaggle.com/datasets/lucabasa/dutch-energy> [Accessed 29 March 2024].
+Basanisi, L. (2020, June). Energy consumption of the Netherlands. Retrieved March 29, 2024 from https://www.kaggle.com/datasets/lucabasa/dutch-energy.
 
-Bergstra, J., Yamins, D. and Cox, D.D., 2013. Making a Science of Model Search: Hyperparameter Optimization in Hundreds of Dimensions for Vision Architectures. In: Proceedings of the 30th International Conference on Machine Learning (ICML 2013), June 2013. pp.115-123.
+Bergstra, J., Yamins, D., Cox, D. D. (2013) Making a Science of Model Search: Hyperparameter Optimization in Hundreds of Dimensions for Vision Architectures. TProc. of the 30th International Conference on Machine Learning (ICML 2013), June 2013, pp. I-115 to I-23.
 
 Bolton, R., 2022. Natural gas, rising prices and the electricity market.
 
-ENTSO-E, 2022. Detailed Data Descriptions, Version 3, Release 3. Available at: <https://transparency.entsoe.eu/> [Accessed 1 March 2024].
+ENTSO-E. Detailed Data Descriptions, Version 3, Release 3; 2022. Available at: ENTSO-E Detailed Data Descriptions (Accessed: March 25, 2024).
 
-ENTSO-E transparency platform. Available at: <https://transparency.entsoe.eu/> [Accessed 1 March 2024].
+ENTSO-E transparency platform. Available at: ENTSO-E Transparency (Accessed: March 25, 2024).
 
-Friedman, J.H., 2001. Greedy function approximation: a gradient boosting machine. Annals of Statistics, pp.1189-1232.
+Friedman, J.H., 2001. Greedy function approximation: a gradient boosting machine. Annals of statistics, pp.1189-1232.
 
-Greater London Authority, 2023. SmartMeter Energy Consumption Data in London Households. [online] Available at: <https://data.london.gov.uk/dataset/smartmeter-energy-use-data-in-london-households> [Accessed 1 July 2024].
+Hastie, T. & Tibshirani, R. (1986), 'Generalized Additive Models', Statist. Sci. 1 (3), 297--310.
 
-Hastie, T. and Tibshirani, R., 1986. Generalized Additive Models. Statistical Science, 1(3), pp.297-310.
+holidays 0.50. Available at: https://pypi.org/project/holidays/ (Accessed: March 29, 2024).
 
-holidays, 2024. holidays 0.50. Available at: <https://pypi.org/project/holidays/> [Accessed 1 March 2024].
-
-Keles, D., Scelle, J., Paraschiv, F. and Fichtner, W., 2016. Extended forecast methods for day-ahead electricity spot prices applying artificial neural networks. Applied Energy, 162, pp.218-230.
+Keles, D., Scelle, J., Paraschiv, F. and Fichtner, W., 2016. Extended forecast methods for day-ahead electricity spot prices applying artificial neural networks. Applied energy, 162, pp.218-230.
 
 Lago, J., De Ridder, F. and De Schutter, B., 2018. Forecasting spot electricity prices: Deep learning approaches and empirical comparison of traditional algorithms. Applied Energy, 221, pp.386-405.
 
-Lago, J., De Ridder, F., Vrancx, P. and De Schutter, B., 2018. Forecasting day-ahead electricity prices in Europe: The importance of considering market integration. Applied Energy, 211, pp.890-903.
+Lago, J., De Ridder, F., Vrancx, P. and De Schutter, B., 2018. Forecasting day-ahead electricity prices in Europe: The importance of considering market integration. Applied energy, 211, pp.890-903.
 
-Lago, J., Marcjasz, G., De Schutter, B. and Weron, R., 2021. Forecasting day-ahead electricity prices: A review of state-of-the-art algorithms, best practices and an open-access benchmark. Applied Energy, 293, p.116983.
+Lago, J., Marcjasz, G., De Schutter, B. and Weron, R., 2021. Forecasting day-ahead electricity prices: A review of state-of-the-art algorithms, best practices and an open-access benchmark. Applied Energy, 293, p.116983
 
-Larsen, K., 2015. GAM: The Predictive Modeling Silver Bullet. Available at: <https://multithreaded.stitchfix.com/blog/2015/07/30/gam/> [Accessed 10 June 2024].
+Larsen, K. (2015) Gam: The predictive modeling silver bullet, GAM: The Predictive Modeling Silver Bullet. Available at: https://multithreaded.stitchfix.com/blog/2015/07/30/gam/ (Accessed: 10 June 2024). 
 
-OpenWeather, 2024. Available at: <https://openweathermap.org/> [Accessed 1 March 2024].
+OpenWeather. Available at: https://openweathermap.org/ (Accessed: March 29, 2024).
 
-pmdarima, 2024. pmdarima 2.0.4. Available at: <https://pypi.org/project/pmdarima/> [Accessed 1 March 2024].
+pmdarima 2.0.4. Available at: https://pypi.org/project/pmdarima/ (Accessed: March 29, 2024).
 
-Power Engineering International, 2023. Record low European power demand in Q2 as renewables output hits new high. Power Engineering International. Available at: <https://www.powerengineeringint.com/world-regions/europe/record-low-european-power-demand-in-q2-as-renewables-output-hits-new-high/> [Accessed 1 June 2024].
+Power Engineering International (2023) Record low European power demand in Q2 as renewables output hits new high, Power Engineering International. Available at: https://www.powerengineeringint.com/world-regions/europe/record-low-european-power-demand-in-q2-as-renewables-output-hits-new-high/ (Accessed: 03 June 2024). 
 
-Ramírez, S., 2024. FastAPI. [Computer software] Available at: <https://github.com/tiangolo/fastapi>.
+Ramírez, S. FastAPI [Computer software]. https://github.com/tiangolo/fastapi
 
-Servén, D. and Brummitt, C., 2018. pyGAM: Generalized Additive Models in Python. Zenodo. DOI: 10.5281/zenodo.1208723.
+Servén D., Brummitt C. (2018). pyGAM: Generalized Additive Models in Python. Zenodo. DOI: 10.5281/zenodo.1208723
 
-Shi, Y., Ke, G., Soukhavong, D., Lamb, J., Meng, Q., Finley, T., Wang, T., Chen, W., Ma, W., Ye, Q., Liu, T., Titov, N. and Cortes, D., 2024. lightgbm: Light Gradient Boosting Machine. R package version 4.3.0.99. Available at: <https://github.com/Microsoft/LightGBM>.
+Shi Y, Ke G, Soukhavong D, Lamb J, Meng Q, Finley T, Wang T, Chen W, Ma W, Ye Q, Liu T, Titov N, Cortes D (2024). lightgbm: Light Gradient Boosting Machine. R package version 4.3.0.99, https://github.com/Microsoft/LightGBM.
 
 Smal, T. and Wieprow, J., 2023. Energy security in the context of global energy crisis: economic and financial conditions. Energies, 16(4), p.1605.
 
