@@ -4,7 +4,7 @@
 
 ### Project Motivation
 
-The sharp increase in European energy prices in 2022, with energy and supply costs surging by 110% compared to 2020, highlighted the urgent need for accurate energy price forecasts to help households optimize their energy usage and mitigate financial strain. This project aims to develop a model that generates precise day-ahead energy price forecasts, presented through a user-friendly dashboard application. As a case study, forecasts were generated for day-ahead electricity prices in the Netherlands, and the results of the proposed method were compared against benchmarks found in the literature.
+The sharp increase in European energy prices in 2022, driven by geopolitical tensions, post-COVID-19 demand surge, and supply chain disruptions, highlighted the urgent need for accurate energy price forecasts. These forecasts can help households optimize energy usage and mitigate financial strain. This project aims to develop a model that generates precise day-ahead energy price forecasts, presented through a user-friendly dashboard application. As a case study, forecasts were generated for day-ahead electricity prices in the Netherlands and compared against benchmarks found in the literature.
 
 ### Data and Features
 
@@ -21,6 +21,11 @@ Various models were explored for forecasting day-ahead electricity prices, inclu
 5. **Gradient Boosting Decision Trees (GBDTs)**: LightGBM for efficient and scalable modeling.
 
 ### Results
+
+<div align="center">
+    <img src="images/plot_test.png" alt=" " width="1200"/>
+    <p><strong>Figure 1:</strong> Plot of Forecasts for a Single Day (20/03/2024) in the Test Period.</p>
+</div>
 
 <div align="center">
     <img src="images/results.png" alt="Performance Comparison between Fitted Models" width="600"/>
@@ -44,10 +49,10 @@ The developed model successfully generated precise day-ahead electricity price f
 ### Demonstration
 
 <div align="center">
-    <img src="images/demo.gif" alt=" " width="800"/>
-    <p><strong>Figure 1:</strong> Demonstration of the Application's User Experience.</p>
+    <img src="images/demo.gif" alt=" " width="600"/>
+    <p><strong>Figure 2:</strong> Demonstration of the Application's User Experience.</p>
 </div>
 
 ### Further Reading
 
-For more detailed information, please refer to the full documentation and references used in this project, available [here](https://github.com/seamusokeeffe/electricity_price_forcasting/blob/master/Documentation.md).
+For more detailed information, please refer to the full documentation and references used in this project, available in the repository [here](https://github.com/seamusokeeffe/electricity_price_forcasting/blob/master/Documentation.md).
